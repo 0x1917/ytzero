@@ -1,16 +1,3 @@
-/* ---------- watchlist sections ---------- */
-.bucket-section { margin-bottom: 18px; }
-.bucket-title {
-  font-size: 15px;
-  font-weight: 700;
-  margin: 0 0 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.bucket-title svg { width: 18px; height: 18px; stroke-width: 1.8; color: var(--text-2); }
-.bucket-title .count { color: var(--text-3); font-weight: 500; font-size: 13px; }
-
 .scheduled-list {
   border-top: 1px solid var(--surface-2);
 }
@@ -45,12 +32,11 @@
 .scheduled-date { font-size: 12px; margin-top: 2px; white-space: nowrap; }
 .scheduled-actions {
   display: grid;
-  grid-template-columns: repeat(3, 72px) 36px;
+  grid-template-columns: 36px;
   gap: 7px;
   align-items: flex-end;
   position: relative;
 }
-.scheduled-actions > .schedule-picker--inline { grid-column: 1 / span 3; }
 .scheduled-actions > .ui-button--icon svg {
   width: 17px;
   height: 17px;

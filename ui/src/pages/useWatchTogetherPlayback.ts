@@ -7,7 +7,7 @@ import { watchPartyPlayerStatePaused } from "../watchTogetherRuntime";
 import type { PlayerKind } from "./watchPlayerMode";
 import type { WatchPlayerHandle } from "../playerHandle";
 
-type MoreView = "root" | "speed" | "watchlater" | "playlist";
+type MoreView = "root" | "speed" | "playlist";
 
 export function useWatchTogetherPlayback({
   configReady,

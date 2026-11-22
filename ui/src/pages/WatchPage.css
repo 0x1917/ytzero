@@ -996,7 +996,6 @@ body.cinema .watch-layout.theater .watch-actions .ui-button--secondary:not(.ui-p
 .related-card-actions .action-btn.active { color: #0f0f0f; background: var(--accent); }
 .watch-speed-popover { min-width: 132px; }
 .watch-schedule-anchor { position: relative; }
-.watch-schedule-popover { min-width: 162px; padding: 7px; }
 .watch-more-popover { min-width: 240px; }
 .watch-more-scroll { max-height: min(70vh, 560px); }
 .watch-more-menu .more-menu-section > .ui-floating-popover__trigger { display: flex; width: 100%; }
@@ -1010,4 +1009,3 @@ body.cinema .watch-layout.theater .watch-actions .ui-button--secondary:not(.ui-p
 .watch-more-menu .more-menu-back svg { color: var(--text-2); height: 16px; width: 16px; }
 .watch-more-menu .more-menu-section-label { color: var(--text-3); font-size: 11px; font-weight: 600; letter-spacing: .04em; padding: 3px 10px 5px; text-transform: uppercase; }
 .watch-more-menu .ui-menu__status { margin-left: auto; }
-.watch-more-menu--watchlater .schedule-picker__group { margin-inline: 2px; }

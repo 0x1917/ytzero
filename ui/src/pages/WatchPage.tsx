@@ -41,7 +41,7 @@ import Popconfirm from "../components/Popconfirm";
 import PlaylistPicker from "../components/PlaylistPicker";
 import { formatVideoDuration, parseVideoDurationSeconds } from "../components/VideoCard";
 import { VideoThumbnail, watchProgress } from "../components/VideoThumbnail";
-import { SchedulePicker, VideoScheduleActions } from "../components/VideoScheduleActions";
+import { VideoScheduleActions } from "../components/VideoScheduleActions";
 import UpNextOverlay from "../components/UpNextOverlay";
 import { img, videoThumbnail } from "../img";
 import { Alert, Button, ButtonAnchor, Checkbox, IconButton, LocalToast, Menu, MenuItem, MenuSeparator, MenuStatus, Popover, ScrollArea, Switch } from "../components/ui";
@@ -170,7 +170,7 @@ export default function WatchPage() {
     playlists,
     playlistsLoading,
     privateVideoNotice,
-    queue,
+    toggleWatchLater,
     related,
     reload,
     reloadDownloadedPlayer,
@@ -179,7 +179,6 @@ export default function WatchPage() {
     requestYouTubePlayback,
     sbPaused,
     sbSegments,
-    scheduleOpen,
     scheduleToast,
     screenshotFilenameTemplate,
     screenshotFormat,
@@ -192,7 +191,6 @@ export default function WatchPage() {
     setNewPlaylistIcon,
     setNewPlaylistName,
     setSbPaused,
-    setScheduleOpen,
     setShareOpen,
     setShareWithTimestamp,
     setSocialShareOpen,
@@ -595,19 +593,14 @@ export default function WatchPage() {
             </div>
             <div className="watch-action-group watch-action-group--organize watch-action-desktop">
             <div className="watch-action-desktop watch-action-medium watch-schedule-anchor">
-              <Popover
-                align="start"
-                placement="auto"
-                surface="menu"
-                open={scheduleOpen}
-                onOpenChange={setScheduleOpen}
-                className="watch-schedule-popover"
-                trigger={<Button>
-                <Clock /> {t("watchLater")}
-                </Button>}
+              <Button
+                variant={video.status === "queued" ? "secondary" : "default"}
+                aria-pressed={video.status === "queued"}
+                title={video.status === "queued" ? t("removeFromQueue") : t("watchLater")}
+                onClick={() => void toggleWatchLater("desktop")}
               >
-                  <SchedulePicker onSelect={(bucket) => void queue(bucket, "desktop")} activeBucket={video.bucket} />
-              </Popover>
+                {video.status === "queued" ? <Check /> : <Clock />} {t("watchLater")}
+              </Button>
               {scheduleToast?.anchor === "desktop" && <LocalToast key={scheduleToast.id} variant={scheduleToast.variant}>{scheduleToast.message}</LocalToast>}
             </div>
             <Popover
@@ -696,8 +689,9 @@ export default function WatchPage() {
                         <Gauge /> {t("channelSpeed")}
                         <MenuStatus>{speed}×</MenuStatus>
                       </button>
-                      <button className="more-item-medium" onClick={() => setMoreView("watchlater")}>
+                      <button className="more-item-medium" onClick={() => void toggleWatchLater("overflow")}>
                         <Clock /> {t("watchLater")}
+                        {video.status === "queued" && <MenuStatus><Check size={14} /></MenuStatus>}
                       </button>
                       <button className="more-item-wide" onClick={openPlaylistMenu}>
                         <BookmarkPlus /> {t("addToPlaylist")}
@@ -774,17 +768,6 @@ export default function WatchPage() {
                       {video?.channel_playback_speed != null && (
                         <button onClick={() => changeSpeed(null)}>{t("speedDefault")}</button>
                       )}
-                    </>
-                  )}
-                  {moreView === "watchlater" && (
-                    <>
-                      <div className="more-menu-header">
-                        <button className="more-menu-back" title={t("back")} onClick={() => setMoreView("root")}>
-                          <ChevronLeft />
-                        </button>
-                        {t("watchLater")}
-                      </div>
-                      <SchedulePicker onSelect={(bucket) => void queue(bucket, "overflow")} activeBucket={video?.bucket} />
                     </>
                   )}
                   {moreView === "playlist" && (

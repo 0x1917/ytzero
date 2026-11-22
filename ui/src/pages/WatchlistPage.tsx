@@ -1,27 +1,21 @@
 import { useCallback, useEffect, useState } from "react";
 import "./WatchlistPage.css";
-import { Coffee, Sun, X } from "lucide-react";
+import { X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { api, type Bucket, type Video } from "../api";
 import { emit } from "../events";
-import { useI18n, type I18nKey } from "../i18n";
+import { useI18n } from "../i18n";
 import { useDocumentTitle } from "../useDocumentTitle";
-import { SchedulePicker } from "../components/VideoScheduleActions";
 import { formatVideoDuration, parseVideoDurationSeconds } from "../components/VideoCard";
 import { VideoGridSkeleton } from "../components/LoadingState";
 import { VideoThumbnail, watchProgress } from "../components/VideoThumbnail";
-import { EmptyState, IconButton, LocalToast, PageHeader, SectionHeader, SelectMenu } from "../components/ui";
+import { EmptyState, IconButton, PageHeader, SelectMenu } from "../components/ui";
 import EmptyArt from "../components/illustrations/EmptyArt";
 import { img } from "../img";
 import { addCalendarDays, appDayKey, formatAppDate, formatAppTime, parseAppTimestamp } from "../dateTime";
 import type { PlaybackQueueContext, WatchlistSort } from "../playbackQueue";
 
 const BUCKET_ORDER: Bucket[] = ["today", "tonight", "tomorrow", "tomorrow_evening", "weekend"];
-const BUCKET_SECTIONS: { id: string; labelKey: I18nKey; Icon: typeof Sun; buckets: Bucket[] }[] = [
-  { id: "today", labelKey: "groupToday", Icon: Sun, buckets: ["today", "tonight"] },
-  { id: "tomorrow", labelKey: "groupTomorrow", Icon: Sun, buckets: ["tomorrow", "tomorrow_evening"] },
-  { id: "weekend", labelKey: "groupWeekend", Icon: Coffee, buckets: ["weekend"] },
-];
 
 type TranslateFn = ReturnType<typeof useI18n>["t"];
 
@@ -41,11 +35,10 @@ function formatShowFrom(showFrom: string, t: TranslateFn, locale: string, timeZo
 }
 
 export default function WatchlistPage() {
-  const { t, bucketLabel, locale, timeZone } = useI18n();
+  const { t, locale, timeZone } = useI18n();
   useDocumentTitle(t("navWatchlist"));
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
-  const [scheduleToast, setScheduleToast] = useState<{ videoId: string; id: number } | null>(null);
   const [sort, setSort] = useState<WatchlistSort>(() => {
     const stored = sessionStorage.getItem("watchlistSort") as WatchlistSort | null;
     return stored && WATCHLIST_SORTS.includes(stored) ? stored : "schedule";
@@ -86,10 +79,10 @@ export default function WatchlistPage() {
   };
   const sortScheduled = (items: Video[]) => [...items].sort(COMPARATORS[sort]);
 
-  const sections = BUCKET_SECTIONS.map((section) => ({
-    ...section,
-    items: sortScheduled(videos.filter((v) => v.bucket && section.buckets.includes(v.bucket))),
-  })).filter((section) => section.items.length > 0);
+  const items = sortScheduled(videos.filter((v) => v.bucket));
+  // Saves land in "today" and are available at once; only videos queued under
+  // the former Tomorrow/Weekend buckets still have a future time worth showing.
+  const now = Date.now();
   const playbackQueue: PlaybackQueueContext = { version: 1, kind: "watchlist", sort, dueOnly: false };
 
   return (
@@ -119,44 +112,27 @@ export default function WatchlistPage() {
       ) : videos.length === 0 ? (
         <EmptyState art={<EmptyArt scene="scheduleClear" />} title={t("watchlistEmpty")} description={t("watchlistEmptyHint")} />
       ) : (
-        <>
-          {sections.map(({ id, labelKey, Icon, items }) => {
-            return (
-              <section key={id} className="bucket-section">
-                <SectionHeader icon={<Icon />} title={t(labelKey)} />
-                <div className="scheduled-list">
-                  {items.map((v) => (
-                    <article key={v.video_id} className="scheduled-item">
-                      <Link to={`/watch/${v.video_id}`} state={{ playbackQueue }} className="scheduled-thumb-link" aria-label={v.title} title={v.title}>
-                        <VideoThumbnail src={img(v.thumbnail)} watched={v.watched === 1} progress={watchProgress(v.watch_position, v.watch_duration)} variant="scheduled">
-                          {v.duration && v.is_short !== 1 && <span className="duration-badge">{formatVideoDuration(v.duration)}</span>}
-                        </VideoThumbnail>
-                      </Link>
-                      <div className="scheduled-info">
-                        <Link to={`/watch/${v.video_id}`} state={{ playbackQueue }} className="scheduled-title" title={v.title}>{v.title}</Link>
-                        <div className="muted scheduled-channel">{v.channel_title}</div>
-                      </div>
-                      <div className="muted scheduled-date">
-                        {v.show_from ? formatShowFrom(v.show_from, t, locale, timeZone) : ""}
-                      </div>
-                      <div className="scheduled-actions">
-                        <SchedulePicker
-                          layout="inline"
-                          activeBucket={v.bucket}
-                          onSelect={(bucket) => api.queue(v.video_id, bucket)
-                            .then(() => { emit("queue-changed"); setScheduleToast({ videoId: v.video_id, id: Date.now() }); load(); })
-                            .catch(console.error)}
-                        />
-                        <IconButton label={t("removeFromQueue")} onClick={() => api.dequeue(v.video_id).then(() => { emit("queue-changed"); load(); }).catch(console.error)}><X size={15} /></IconButton>
-                        {scheduleToast?.videoId === v.video_id && <LocalToast key={scheduleToast.id}>{t("scheduledFeedback")}</LocalToast>}
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-        </>
+        <div className="scheduled-list">
+          {items.map((v) => (
+            <article key={v.video_id} className="scheduled-item">
+              <Link to={`/watch/${v.video_id}`} state={{ playbackQueue }} className="scheduled-thumb-link" aria-label={v.title} title={v.title}>
+                <VideoThumbnail src={img(v.thumbnail)} watched={v.watched === 1} progress={watchProgress(v.watch_position, v.watch_duration)} variant="scheduled">
+                  {v.duration && v.is_short !== 1 && <span className="duration-badge">{formatVideoDuration(v.duration)}</span>}
+                </VideoThumbnail>
+              </Link>
+              <div className="scheduled-info">
+                <Link to={`/watch/${v.video_id}`} state={{ playbackQueue }} className="scheduled-title" title={v.title}>{v.title}</Link>
+                <div className="muted scheduled-channel">{v.channel_title}</div>
+              </div>
+              <div className="muted scheduled-date">
+                {v.show_from && parseAppTimestamp(v.show_from).getTime() > now ? formatShowFrom(v.show_from, t, locale, timeZone) : ""}
+              </div>
+              <div className="scheduled-actions">
+                <IconButton label={t("removeFromQueue")} onClick={() => api.dequeue(v.video_id).then(() => { emit("queue-changed"); load(); }).catch(console.error)}><X size={15} /></IconButton>
+              </div>
+            </article>
+          ))}
+        </div>
       )}
     </>
   );

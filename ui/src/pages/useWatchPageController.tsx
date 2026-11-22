@@ -34,6 +34,7 @@ import { useWatchPlaybackPosition } from "./useWatchPlaybackPosition";
 import { useYouTubeMediaSession } from "./useYouTubeMediaSession";
 import { resolveShortcutBindings, SHORTCUT_CLOSE_EVENT, shortcutActionMatches } from "../keyboardShortcuts";
 import { normalizeWatchCommentsMode } from "../../../shared/watchComments";
+import { WATCH_LATER_BUCKET } from "../components/VideoScheduleActions";
 
 const CINEMA_MODE_KEY = "watchCinemaMode";
 export function useWatchPageController(audioModeRequested: boolean = false) {
@@ -153,11 +154,10 @@ export function useWatchPageController(audioModeRequested: boolean = false) {
   const [childRequestError, setChildRequestError] = useState(false);
   /** The granted request whose video row was already pulled in again. */
   const grantedRequestRef = useRef<number | null>(null);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [playlistOpen, setPlaylistOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
-  const [moreView, setMoreView] = useState<"root" | "speed" | "watchlater" | "playlist">("root");
+  const [moreView, setMoreView] = useState<"root" | "speed" | "playlist">("root");
   const [playlists, setPlaylists] = useState<UserPlaylist[]>([]);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -1373,20 +1373,24 @@ export function useWatchPageController(audioModeRequested: boolean = false) {
     });
   };
 
-  const queue = async (bucket: Bucket, anchor: "desktop" | "overflow") => {
+  // A single press saves to Watch later, a second press removes it.
+  const toggleWatchLater = async (anchor: "desktop" | "overflow") => {
     if (!video) return;
     const videoId = video.video_id;
     const previousStatus = video.status;
     const previousBucket = video.bucket;
+    const removing = previousStatus === "queued";
+    const nextStatus = removing ? "inbox" : "queued";
+    const nextBucket = removing ? null : WATCH_LATER_BUCKET;
     setMoreOpen(false);
-    setScheduleOpen(false);
-    setVideo((current) => current?.video_id === videoId ? { ...current, status: "queued", bucket } : current);
+    setVideo((current) => current?.video_id === videoId ? { ...current, status: nextStatus, bucket: nextBucket } : current);
     try {
-      await api.queue(videoId, bucket);
+      if (removing) await api.dequeue(videoId);
+      else await api.queue(videoId, WATCH_LATER_BUCKET);
       emit("queue-changed");
-      setScheduleToast({ id: Date.now(), message: t("scheduledFeedback"), variant: "default", anchor });
+      setScheduleToast({ id: Date.now(), message: t(removing ? "watchLaterRemoved" : "watchLaterSaved"), variant: "default", anchor });
     } catch {
-      setVideo((current) => current?.video_id === videoId && current.bucket === bucket
+      setVideo((current) => current?.video_id === videoId && current.bucket === nextBucket
         ? { ...current, status: previousStatus, bucket: previousBucket }
         : current);
       setScheduleToast({ id: Date.now(), message: t("scheduleSaveFailed"), variant: "danger", anchor });
@@ -1544,7 +1548,7 @@ export function useWatchPageController(audioModeRequested: boolean = false) {
     playlistsLoading,
     privateVideoNotice,
     progressRef,
-    queue,
+    toggleWatchLater,
     related,
     reload,
     reloadDownloadedPlayer,
@@ -1553,7 +1557,6 @@ export function useWatchPageController(audioModeRequested: boolean = false) {
     requestYouTubePlayback,
     sbPaused,
     sbSegments,
-    scheduleOpen,
     scheduleToast,
     screenshotFilenameTemplate,
     screenshotFormat,
@@ -1566,7 +1569,6 @@ export function useWatchPageController(audioModeRequested: boolean = false) {
     setNewPlaylistIcon,
     setNewPlaylistName,
     setSbPaused,
-    setScheduleOpen,
     setShareOpen,
     setShareWithTimestamp,
     setSocialShareOpen,
